@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finance-service
+  namespace: supplychain
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: finance-service
+  template:
+    metadata:
+      labels:
+        app: finance-service
+        azure.workload.identity/use: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      serviceAccountName: supplychain-sa
+      containers:
+      - name: finance-service
+        image: supplychainstudent.azurecr.io/finance-service:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "azure"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: azure-secrets
+              key: POSTGRES_CONNECTION
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: azure-secrets
+              key: REDIS_CONNECTION
+        - name: STORAGE_CONNECTION
+          valueFrom:
+            secretKeyRef:
+              name: azure-secrets
+              key: STORAGE_CONNECTION
+        - name: SERVICEBUS_CONNECTION
+          valueFrom:
+            secretKeyRef:
+              name: servicebus-secrets
+              key: connection-string
+        - name: APP_INSIGHTS_INSTRUMENTATION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-secrets
+              key: APP_INSIGHTS_KEY
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        volumeMounts:
+        - name: azure-config
+          mountPath: /app/config
+        - name: azure-file-share
+          mountPath: /app/shared-data
+      volumes:
+      - name: azure-config
+        configMap:
+          name: azure-config
+      - name: azure-file-share
+        persistentVolumeClaim:
+          claimName: azure-file-share
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finance-service
+  namespace: supplychain
+spec:
+  selector:
+    app: finance-service
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP

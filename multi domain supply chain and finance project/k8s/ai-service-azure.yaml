@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  namespace: supplychain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-service
+  template:
+    metadata:
+      labels:
+        app: ai-service
+        azure.workload.identity/use: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: supplychain-sa
+      containers:
+      - name: ai-service
+        image: supplychainstudent.azurecr.io/ai-service:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: azure-secrets
+              key: POSTGRES_CONNECTION
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: azure-secrets
+              key: REDIS_CONNECTION
+        - name: STORAGE_CONNECTION
+          valueFrom:
+            secretKeyRef:
+              name: azure-secrets
+              key: STORAGE_CONNECTION
+        - name: AZURE_STORAGE_CONTAINER
+          value: "ml-models"
+        - name: APP_INSIGHTS_INSTRUMENTATION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: azure-secrets
+              key: APP_INSIGHTS_KEY
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: models-storage
+          mountPath: /app/models
+        - name: azure-config
+          mountPath: /app/config
+      initContainers:
+      - name: model-downloader
+        image: mcr.microsoft.com/azure-cli
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          az storage blob download-batch \
+            --source ml-models \
+            --destination /app/models \
+            --account-name supplychainstorage
+        volumeMounts:
+        - name: models-storage
+          mountPath: /app/models
+      volumes:
+      - name: models-storage
+        persistentVolumeClaim:
+          claimName: azure-file-share
+      - name: azure-config
+        configMap:
+          name: azure-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  namespace: supplychain
+spec:
+  selector:
+    app: ai-service
+  ports:
+  - port: 80
+    targetPort: 5000
+  type: ClusterIP
