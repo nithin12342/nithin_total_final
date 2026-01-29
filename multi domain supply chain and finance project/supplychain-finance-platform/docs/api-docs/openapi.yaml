@@ -1,0 +1,155 @@
+openapi: 3.0.0
+info:
+  title: Supply Chain Finance Platform API
+  version: 1.0.0
+  description: API documentation for Supply Chain Finance Platform
+
+servers:
+  - url: https://api.supplychain-finance.com/v1
+    description: Production server
+  - url: https://staging-api.supplychain-finance.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        supplier:
+          type: string
+        buyer:
+          type: string
+        amount:
+          type: number
+          format: float
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [PENDING, APPROVED, FINANCED, PAID]
+        createdAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '401':
+          description: Invalid credentials
+
+  /finance/invoices:
+    get:
+      summary: List invoices
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invoice'
+
+    post:
+      summary: Create new invoice
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Invoice'
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+
+  /supply-chain/inventory:
+    get:
+      summary: Get inventory status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current inventory status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        quantity:
+                          type: integer
+                        location:
+                          type: string

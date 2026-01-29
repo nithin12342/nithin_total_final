@@ -1,0 +1,150 @@
+.model-monitoring-page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.model-monitoring-page .page-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.model-monitoring-page .page-header h1 {
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.model-monitoring-page .page-header p {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.metrics-dashboard {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.metric-card h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #007bff;
+  margin: 1rem 0;
+}
+
+.metric-status .status-good {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.metric-status .status-poor {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.last-updated {
+  text-align: center;
+  color: #666;
+  margin: 1rem 0 2rem 0;
+  font-style: italic;
+}
+
+.actions {
+  text-align: center;
+}
+
+.retrain-button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.retrain-button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.retrain-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.thresholds-info {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+.thresholds-info h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.thresholds-info ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.thresholds-info li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.thresholds-info li:last-child {
+  border-bottom: none;
+}
+
+.model-monitoring-page.error {
+  color: #dc3545;
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+}
+
+@media (max-width: 768px) {
+  .model-monitoring-page {
+    padding: 1rem;
+  }
+  
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .metric-value {
+    font-size: 2rem;
+  }
+}

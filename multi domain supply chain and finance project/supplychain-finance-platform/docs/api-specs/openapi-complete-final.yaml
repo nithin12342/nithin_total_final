@@ -1,0 +1,1257 @@
+: Finance an existing invoice
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Invoice ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinanceRequest'
+      responses:
+        '200':
+          description: Invoice financed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          description: Invalid finance request or invoice cannot be financed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/finance/invoices/{id}/approve:
+    post:
+      tags:
+        - finance
+      summary: Approve invoice
+      description: Approve an existing invoice
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Invoice ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          description: Invalid approval request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/finance/analytics:
+    get:
+      tags:
+        - analytics
+      summary: Get analytics
+      description: Retrieve finance analytics data
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsData'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/finance/risk-assessment:
+    get:
+      tags:
+        - analytics
+      summary: Get risk assessment
+      description: Retrieve risk assessment for a supplier
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: supplierId
+          in: query
+          description: Supplier ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Successfully retrieved risk assessment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskAssessment'
+        '400':
+          description: Invalid supplier ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # AI/ML endpoints
+  /api/ai/demand-forecast:
+    post:
+      tags:
+        - analytics
+      summary: Predict demand
+      description: Predict demand for a product using ML models
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemandForecastRequest'
+      responses:
+        '200':
+          description: Demand forecast generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemandForecast'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/ai/demand-forecast/product/{productId}:
+    get:
+      tags:
+        - analytics
+      summary: Get demand forecasts by product
+      description: Retrieve demand forecasts for a specific product
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          description: Product ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Demand forecasts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DemandForecast'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/ai/demand-forecast/{id}:
+    get:
+      tags:
+        - analytics
+      summary: Get demand forecast by ID
+      description: Retrieve a specific demand forecast by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Demand forecast ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Demand forecast retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemandForecast'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Demand forecast not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/ai/fraud-detection:
+    post:
+      tags:
+        - analytics
+      summary: Detect fraud
+      description: Detect potential fraud in transactions using ML models
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FraudDetectionRequest'
+      responses:
+        '200':
+          description: Fraud detection completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FraudDetection'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/ai/fraud-detection/transaction/{transactionId}:
+    get:
+      tags:
+        - analytics
+      summary: Get fraud detections by transaction
+      description: Retrieve fraud detections for a specific transaction
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: transactionId
+          in: path
+          description: Transaction ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Fraud detections retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FraudDetection'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/ai/fraud-detection/high-risk:
+    get:
+      tags:
+        - analytics
+      summary: Get high risk fraud detections
+      description: Retrieve high risk fraud detections
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: High risk fraud detections retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FraudDetection'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/ai/risk-assessment/{supplierId}:
+    post:
+      tags:
+        - analytics
+      summary: Assess supplier risk
+      description: Assess risk for a supplier using ML models
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: supplierId
+          in: path
+          description: Supplier ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Risk assessment completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskAssessment'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/ai/risk-assessment/supplier/{supplierId}:
+    get:
+      tags:
+        - analytics
+      summary: Get risk assessments by supplier
+      description: Retrieve risk assessments for a specific supplier
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: supplierId
+          in: path
+          description: Supplier ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Risk assessments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RiskAssessment'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/ai/risk-assessment/level/{riskLevel}:
+    get:
+      tags:
+        - analytics
+      summary: Get risk assessments by risk level
+      description: Retrieve risk assessments for a specific risk level
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riskLevel
+          in: path
+          description: Risk level (LOW, MEDIUM, HIGH, CRITICAL)
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Risk assessments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RiskAssessment'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/ai/models/retrain:
+    post:
+      tags:
+        - analytics
+      summary: Retrain models
+      description: Retrain all AI/ML models with latest data
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Models retrained successfully
+          content:
+            application/json:
+              schema:
+                type: boolean
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/ai/analytics/summary:
+    get:
+      tags:
+        - analytics
+      summary: Get AI analytics summary
+      description: Retrieve summary of AI/ML analytics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Analytics summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Blockchain endpoints
+  /api/blockchain/invoice:
+    post:
+      tags:
+        - blockchain
+      summary: Create invoice on blockchain
+      description: Create a new invoice on the blockchain
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: supplier
+          in: query
+          description: Supplier identifier
+          required: true
+          schema:
+            type: string
+        - name: buyer
+          in: query
+          description: Buyer identifier
+          required: true
+          schema:
+            type: string
+        - name: amount
+          in: query
+          description: Invoice amount
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: dueDate
+          in: query
+          description: Due date as timestamp
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Invoice created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/blockchain/invoice/{id}/finance:
+    post:
+      tags:
+        - blockchain
+      summary: Finance invoice on blockchain
+      description: Finance an existing invoice on the blockchain
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Invoice ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: amount
+          in: query
+          description: Financing amount
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Invoice financed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/blockchain/shipment:
+    post:
+      tags:
+        - blockchain
+      summary: Create shipment on blockchain
+      description: Create a new shipment on the blockchain
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: supplier
+          in: query
+          description: Supplier identifier
+          required: true
+          schema:
+            type: string
+        - name: buyer
+          in: query
+          description: Buyer identifier
+          required: true
+          schema:
+            type: string
+        - name: productId
+          in: query
+          description: Product identifier
+          required: true
+          schema:
+            type: string
+        - name: quantity
+          in: query
+          description: Quantity of products
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Shipment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/blockchain/shipment/{id}/status:
+    put:
+      tags:
+        - blockchain
+      summary: Update shipment status on blockchain
+      description: Update the status of an existing shipment on the blockchain
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Shipment ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          description: New shipment status
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Shipment status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Shipment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/blockchain/invoice/{id}:
+    get:
+      tags:
+        - blockchain
+      summary: Get invoice from blockchain
+      description: Retrieve invoice details from the blockchain
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Invoice ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Invoice details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceDetails'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/blockchain/shipment/{id}:
+    get:
+      tags:
+        - blockchain
+      summary: Get shipment from blockchain
+      description: Retrieve shipment details from the blockchain
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Shipment ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Shipment details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShipmentDetails'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Shipment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # IoT endpoints
+  /api/iot/devices/{deviceId}/state:
+    get:
+      tags:
+        - iot
+      summary: Get device state
+      description: Retrieve the current state of an IoT device
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          description: Device ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Device state retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/iot/devices/{deviceId}/maintenance:
+    get:
+      tags:
+        - iot
+      summary: Get maintenance recommendations
+      description: Retrieve maintenance recommendations for an IoT device
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          description: Device ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Maintenance recommendations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/iot/analytics:
+    get:
+      tags:
+        - iot
+      summary: Get IoT analytics
+      description: Retrieve analytics data from IoT devices
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Analytics data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/iot/health:
+    get:
+      tags:
+        - iot
+      summary: Get IoT service health
+      description: Check the health status of the IoT service
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Health status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # DeFi endpoints
+  /api/defi/yield-farming:
+    post:
+      tags:
+        - defi
+      summary: Start yield farming
+      description: Start yield farming for a specific asset
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset:
+                  type: string
+                amount:
+                  type: number
+                  format: float
+                poolId:
+                  type: string
+      responses:
+        '200':
+          description: Yield farming started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/defi/liquidity-pools:
+    get:
+      tags:
+        - defi
+      summary: Get liquidity pools
+      description: Retrieve available liquidity pools
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Liquidity pools retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    assets:
+                      type: array
+                      items:
+                        type: string
+                    apy:
+                      type: number
+                      format: float
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/defi/liquidity-pools/{poolId}:
+    post:
+      tags:
+        - defi
+      summary: Add liquidity to pool
+      description: Add liquidity to a specific liquidity pool
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: poolId
+          in: path
+          description: Pool ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset:
+                  type: string
+                amount:
+                  type: number
+                  format: float
+      responses:
+        '200':
+          description: Liquidity added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Pool not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/defi/staking:
+    post:
+      tags:
+        - defi
+      summary: Start staking
+      description: Start staking a specific asset
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset:
+                  type: string
+                amount:
+                  type: number
+                  format: float
+                duration:
+                  type: integer
+                  description: Staking duration in days
+      responses:
+        '200':
+          description: Staking started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/defi/rewards:
+    get:
+      tags:
+        - defi
+      summary: Get DeFi rewards
+      description: Retrieve available DeFi rewards for the user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Rewards retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    amount:
+                      type: number
+                      format: float
+                    asset:
+                      type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

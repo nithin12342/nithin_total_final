@@ -1,0 +1,91 @@
+# AI-Driven Security Monitoring Configuration
+
+# General settings
+general:
+  log_level: INFO
+  alert_threshold: 0.7
+  monitoring_interval_seconds: 60
+  historical_data_training_days: 30
+
+# AI Model Settings
+ai_models:
+  isolation_forest:
+    contamination: 0.1
+    random_state: 42
+  
+  random_forest:
+    n_estimators: 100
+    random_state: 42
+  
+  lstm:
+    timesteps: 10
+    hidden_units: 50
+    dropout_rate: 0.2
+    learning_rate: 0.001
+    epochs: 50
+    batch_size: 32
+  
+  dbscan:
+    eps: 0.5
+    min_samples: 5
+
+# Behavioral Analytics
+behavioral_analytics:
+  baseline_period_days: 30
+  login_time_threshold_hours: 4
+  location_distance_threshold: 2.0
+  data_volume_multiplier: 3
+  session_duration_anomaly_factor: 2.0
+
+# Threat Intelligence
+threat_intelligence:
+  feeds:
+    - url: https://threatintel.example.com/feed.json
+      type: ioc
+      update_interval_seconds: 3600
+    
+    - url: https://threatintel.example.com/actors.json
+      type: threat_actor
+      update_interval_seconds: 86400
+  
+  correlation:
+    ip_match_weight: 0.8
+    domain_match_weight: 0.7
+    file_hash_match_weight: 0.9
+
+# Alerting System
+alerts:
+  email:
+    enabled: true
+    smtp_server: smtp.example.com
+    smtp_port: 587
+    sender: security@example.com
+  
+  slack:
+    enabled: true
+    webhook_url: https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+  
+  sms:
+    enabled: false
+    twilio_account_sid: YOUR_ACCOUNT_SID
+    twilio_auth_token: YOUR_AUTH_TOKEN
+    from_number: +1234567890
+
+# Data Storage
+storage:
+  metrics_retention_days: 90
+  events_retention_days: 365
+  database_path: /var/lib/ai-security-monitor/db.sqlite
+
+# Performance
+performance:
+  max_concurrent_analyses: 10
+  analysis_timeout_seconds: 30
+  cache_size: 1000
+  batch_processing_size: 100
+
+# Integration
+integration:
+  zero_trust_engine: true
+  siem_system: false
+  edr_integration: false

@@ -1,0 +1,630 @@
+openapi: 3.0.3
+info:
+  title: Supply Chain Finance Platform API
+  version: 2.0.0
+  description: |
+    Comprehensive API documentation for the Supply Chain Finance Platform.
+    
+    This API provides access to all services including:
+    - Authentication and User Management
+    - Supply Chain Operations
+    - Financial Services
+    - Blockchain Integration
+    - AI/ML Analytics
+    - IoT Data Processing
+    - DeFi Protocols Integration
+    
+    All endpoints require authentication via JWT Bearer tokens unless otherwise specified.
+  contact:
+    name: API Support
+    email: support@supplychain-finance.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://api.supplychain-finance.com/v2
+    description: Production server
+  - url: https://staging-api.supplychain-finance.com/v2
+    description: Staging server
+  - url: http://localhost:8080/v2
+    description: Development server
+
+tags:
+  - name: authentication
+    description: User authentication and authorization
+  - name: users
+    description: User management
+  - name: supply-chain
+    description: Supply chain operations and management
+  - name: finance
+    description: Financial services and operations
+  - name: invoices
+    description: Invoice management and processing
+  - name: blockchain
+    description: Blockchain integration and smart contracts
+  - name: analytics
+    description: AI/ML analytics and insights
+  - name: iot
+    description: IoT data processing and management
+  - name: defi
+    description: DeFi protocols integration
+  - name: notifications
+    description: System notifications and alerts
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Common schemas
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 100
+        totalPages:
+          type: integer
+          example: 10
+
+    # User and Authentication schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [ADMIN, SUPPLIER, FINANCIER, BUYER]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    # Supply Chain schemas
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        sku:
+          type: string
+        category:
+          type: string
+        supplierId:
+          type: string
+          format: uuid
+
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        contactEmail:
+          type: string
+          format: email
+        contactPhone:
+          type: string
+        address:
+          type: string
+        rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5
+
+    Shipment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        trackingNumber:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_TRANSIT, DELIVERED, DELAYED]
+        origin:
+          type: string
+        destination:
+          type: string
+        estimatedDelivery:
+          type: string
+          format: date-time
+        actualDelivery:
+          type: string
+          format: date-time
+
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        location:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+
+    # Finance schemas
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        supplierId:
+          type: string
+          format: uuid
+        buyerId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: float
+        currency:
+          type: string
+          example: "USD"
+        dueDate:
+          type: string
+          format: date
+        issuedDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [DRAFT, PENDING, APPROVED, FINANCED, PAID, OVERDUE, CANCELLED]
+        invoiceNumber:
+          type: string
+        description:
+          type: string
+        blockchainHash:
+          type: string
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoiceId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: float
+        currency:
+          type: string
+          example: "USD"
+        paymentDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, FAILED]
+
+    # Blockchain schemas
+    InvoiceDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          format: biginteger
+        supplier:
+          type: string
+        buyer:
+          type: string
+        amount:
+          type: string
+          format: biginteger
+        dueDate:
+          type: string
+          format: biginteger
+        isFinanced:
+          type: boolean
+        financier:
+          type: string
+
+    ShipmentDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          format: biginteger
+        supplier:
+          type: string
+        buyer:
+          type: string
+        productId:
+          type: string
+        quantity:
+          type: string
+          format: biginteger
+        status:
+          type: string
+
+    # Analytics schemas
+    InventoryAnalytics:
+      type: object
+      properties:
+        totalItems:
+          type: integer
+        totalValue:
+          type: number
+          format: float
+        lowStockItems:
+          type: integer
+        turnoverRate:
+          type: number
+          format: float
+
+    DemandForecast:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        productId:
+          type: string
+        predictedDemand:
+          type: integer
+        confidenceLevel:
+          type: number
+          format: float
+        forecastDate:
+          type: string
+          format: date-time
+        period:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    FraudDetection:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        transactionId:
+          type: string
+        riskScore:
+          type: number
+          format: float
+        isFraud:
+          type: boolean
+        detectionDate:
+          type: string
+          format: date-time
+        modelVersion:
+          type: string
+        confidenceLevel:
+          type: number
+          format: float
+        details:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    RiskAssessment:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        supplierId:
+          type: string
+        riskScore:
+          type: number
+          format: float
+        riskLevel:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        assessmentDate:
+          type: string
+          format: date-time
+        modelVersion:
+          type: string
+        confidenceLevel:
+          type: number
+          format: float
+        factors:
+          type: string
+        recommendations:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+
+    # Order schemas
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        supplierId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        orderId:
+          type: integer
+          format: int64
+        productId:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+          format: float
+
+    OrderRequest:
+      type: object
+      properties:
+        supplierId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+
+    # Shipment schemas
+    Shipment:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        origin:
+          type: string
+        destination:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, IN_TRANSIT, DELIVERED, DELAYED]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShipmentItem'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ShipmentItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        shipmentId:
+          type: integer
+          format: int64
+        productId:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+          format: float
+
+    ShipmentRequest:
+      type: object
+      properties:
+        origin:
+          type: string
+        destination:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShipmentItem'
+
+    ShipmentTracking:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        shipmentId:
+          type: integer
+          format: int64
+        trackingNumber:
+          type: string
+        currentLocation:
+          type: string
+        status:
+          type: string
+        estimatedDelivery:
+          type: string
+          format: date-time
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackingEvent'
+
+    TrackingEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        trackingId:
+          type: integer
+          format: int64
+        timestamp:
+          type: string
+          format: date-time
+        location:
+          type: string
+        status:
+          type: string
+        description:
+          type: string
+
+    # Analytics data schemas
+    AnalyticsData:
+      type: object
+      properties:
+        totalInvoices:
+          type: integer
+        totalAmount:
+          type: number
+          format: float
+        financedAmount:
+          type: number
+          format: float
+        averageProcessingTime:
+          type: integer
+        riskDistribution:
+          type: object
+          additionalProperties:
+            type: integer
+
+    FinanceRequest:
+      type: object
+      properties:
+        financierId:
+          type: string
+        amount:
+          type: number
+          format: float
+
+    # AI/ML schemas
+    DemandForecastRequest:
+      type: object
+      properties:
+        productId:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        period:
+          type: string
+          enum: [DAILY, WEEKLY, MONTHLY]
+
+    FraudDetectionRequest:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        amount:
+          type: number
+          format: float
+        supplierId:
+          type: string
+        buyerId:
+          type: string
+        transactionDate:
+          type: string
+          format: date-time
+
+    AssignRoleRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [USER, ADMIN, SUPPLIER, FINANCIER]

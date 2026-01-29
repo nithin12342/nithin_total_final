@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # Frontend Service (This will be the main entrypoint)
+  web-app:
+    image: YOUR_DOCKERHUB_USERNAME/supplychain-web-app # <-- UPDATE THIS
+    ports:
+      - "80:3000" # Maps internal port 3000 to the standard HTTP port 80
+    environment:
+      - API_URL=http://api-gateway:8080
+    depends_on:
+      - api-gateway
+
+  # Backend Services
+  api-gateway:
+    image: YOUR_DOCKERHUB_USERNAME/supplychain-api-gateway # <-- UPDATE THIS
+    depends_on:
+      - auth-service
+      - finance-service
+      - supplychain-service
+
+  auth-service:
+    image: YOUR_DOCKERHUB_USERNAME/supplychain-auth-service # <-- UPDATE THIS
+    environment:
+      # These will be set in the App Service Configuration
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+
+  finance-service:
+    image: YOUR_DOCKERHUB_USERNAME/supplychain-finance-service # <-- UPDATE THIS
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      - mongodb
+
+  supplychain-service:
+    image: YOUR_DOCKERHUB_USERNAME/supplychain-supplychain-service # <-- UPDATE THIS
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      - mongodb
+      
+  blockchain-service:
+    image: YOUR_DOCKERHUB_USERNAME/supplychain-blockchain-service # <-- UPDATE THIS
+
+  ai-analytics:
+    image: YOUR_DOCKERHUB_USERNAME/supplychain-ai-analytics # <-- UPDATE THIS
+    volumes:
+      - ./ai-ml/models:/app/models
+
+  # Databases (running as containers)
+  mongodb:
+    image: mongo:5
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:6
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongo_data:
+  redis_data:

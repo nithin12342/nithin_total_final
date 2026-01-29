@@ -1,0 +1,112 @@
+# Alerting Rules for Supply Chain Finance Platform
+groups:
+  - name: supplychain-alerts
+    rules:
+      # High error rate alerts
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate (instance {{ $labels.instance }})"
+          description: "HTTP error rate is above 5% for 5 minutes\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      - alert: CriticalErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical error rate (instance {{ $labels.instance }})"
+          description: "HTTP error rate is above 10% for 2 minutes\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # High latency alerts
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency (instance {{ $labels.instance }})"
+          description: "HTTP request latency is above 2 seconds for 5 minutes\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # Service down alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service down (instance {{ $labels.instance }})"
+          description: "Service {{ $labels.job }} is down\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # High memory usage alerts
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes{container!="POD", container!=""} / container_spec_memory_limit_bytes{container!="POD", container!=""}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage (instance {{ $labels.instance }})"
+          description: "Container memory usage is above 85%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # High CPU usage alerts
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{container!="POD", container!=""}[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage (instance {{ $labels.instance }})"
+          description: "Container CPU usage is above 80%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # Low disk space alerts
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space (instance {{ $labels.instance }})"
+          description: "Disk space is below 10%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # Blockchain specific alerts
+      - alert: BlockchainSyncDelay
+        expr: blockchain_sync_delay_seconds > 60
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Blockchain sync delay (instance {{ $labels.instance }})"
+          description: "Blockchain sync is delayed by more than 60 seconds\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # AI/ML model performance alerts
+      - alert: ModelAccuracyDegradation
+        expr: ml_model_accuracy < 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Model accuracy degradation (instance {{ $labels.instance }})"
+          description: "ML model accuracy has dropped below 80%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # Supply chain alerts
+      - alert: HighInventoryDiscrepancy
+        expr: inventory_discrepancy_ratio > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High inventory discrepancy (instance {{ $labels.instance }})"
+          description: "Inventory discrepancy is above 5%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+      # Financial alerts
+      - alert: HighTransactionFailureRate
+        expr: rate(financial_transaction_failures[5m]) > 0.02
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High transaction failure rate (instance {{ $labels.instance }})"
+          description: "Financial transaction failure rate is above 2%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"

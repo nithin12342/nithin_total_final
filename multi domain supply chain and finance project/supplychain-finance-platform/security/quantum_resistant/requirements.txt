@@ -1,0 +1,26 @@
+# Requirements for Quantum-Resistant Cryptography
+
+# Core Cryptography
+cryptography>=3.4.8
+pycryptodome>=3.10.1
+
+# Hash Functions
+hashlib  # Built-in with Python
+
+# HMAC
+hmac  # Built-in with Python
+
+# Random Number Generation
+secrets  # Built-in with Python
+
+# Data Structures
+numpy>=1.21.0
+
+# YAML Configuration
+pyyaml>=6.0
+
+# Data Serialization
+struct  # Built-in with Python
+
+# Typing
+typing  # Built-in with Python (Python 3.5+)

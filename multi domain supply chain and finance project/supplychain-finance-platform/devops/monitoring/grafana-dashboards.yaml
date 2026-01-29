@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: supplychain
+data:
+  supply-chain-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Supply Chain Finance Platform - Overview",
+        "tags": ["supply-chain", "finance", "monitoring"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "Service Health Overview",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=~\"auth-service|finance-service|blockchain-service|ai-service|defi-service|iot-service\"}",
+                "legendFormat": "{{job}}"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": null},
+                    {"color": "green", "value": 1}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "title": "Request Rate by Service",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total[5m])",
+                "legendFormat": "{{service}}"
+              }
+            ],
+            "yAxes": [
+              {"label": "Requests/sec", "min": "0"}
+            ]
+          },
+          {
+            "title": "Response Time by Service",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+                "legendFormat": "95th percentile - {{service}}"
+              },
+              {
+                "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+                "legendFormat": "50th percentile - {{service}}"
+              }
+            ],
+            "yAxes": [
+              {"label": "Response Time (seconds)", "min": "0"}
+            ]
+          },
+          {
+            "title": "Error Rate by Service",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m])",
+                "legendFormat": "{{service}}"
+              }
+            ],
+            "yAxes": [
+              {"label": "Error Rate (%)", "min": "0", "max": "100"}
+            ]
+          },
+          {
+            "title": "AI Model Performance",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "ai_model_accuracy",
+                "legendFormat": "Model Accuracy"
+              },
+              {
+                "expr": "ai_prediction_latency_seconds",
+                "legendFormat": "Prediction Latency"
+              }
+            ]
+          },
+          {
+            "title": "Blockchain Transactions",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(blockchain_transactions_total[5m])",
+                "legendFormat": "Transaction Rate"
+              },
+              {
+                "expr": "blockchain_gas_price",
+                "legendFormat": "Gas Price"
+              }
+            ]
+          },
+          {
+            "title": "IoT Device Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "iot_devices_online",
+                "legendFormat": "Online Devices"
+              },
+              {
+                "expr": "iot_devices_offline",
+                "legendFormat": "Offline Devices"
+              }
+            ]
+          },
+          {
+            "title": "Financial Metrics",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "finance_invoice_amount_total",
+                "legendFormat": "Total Invoice Amount"
+              },
+              {
+                "expr": "finance_payment_success_rate",
+                "legendFormat": "Payment Success Rate"
+              }
+            ]
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "30s"
+      }
+    }

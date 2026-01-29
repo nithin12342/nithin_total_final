@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Edge Computing Service
+  edge-service:
+    build: .
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - MQTT_BROKER_URL=mqtt://mosquitto:1883
+      - PORT=3005
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+    depends_on:
+      - mosquitto
+      - redis
+    networks:
+      - supplychain-network
+    restart: unless-stopped
+
+  # MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - supplychain-network
+    restart: unless-stopped
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - supplychain-network
+    restart: unless-stopped
+
+  # MQTT Client Simulator (for testing)
+  mqtt-simulator:
+    image: node:18-alpine
+    command: >
+      sh -c "
+        npm install mqtt axios &&
+        cat > simulator.js << 'EOF'
+        const mqtt = require('mqtt');
+        const client = mqtt.connect('mqtt://mosquitto:1883');
+        
+        client.on('connect', () => {
+          console.log('MQTT Simulator connected');
+          setInterval(() => {
+            const deviceId = 'sensor_' + Math.floor(Math.random() * 100);
+            const sensorTypes = ['temperature', 'humidity', 'pressure', 'gps'];
+            const sensorType = sensorTypes[Math.floor(Math.random() * sensorTypes.length)];
+            
+            let value;
+            switch(sensorType) {
+              case 'temperature':
+                value = 20 + Math.random() * 30; // 20-50°C
+                break;
+              case 'humidity':
+                value = 30 + Math.random() * 50; // 30-80%
+                break;
+              case 'pressure':
+                value = 980 + Math.random() * 40; // 980-1020 hPa
+                break;
+              case 'gps':
+                value = [
+                  40.7128 + (Math.random() - 0.5) * 0.1, // NYC area
+                  -74.0060 + (Math.random() - 0.5) * 0.1
+                ];
+                break;
+            }
+            
+            const data = {
+              deviceId,
+              sensorType,
+              value,
+              timestamp: new Date().toISOString(),
+              batteryLevel: 80 + Math.random() * 20,
+              signalStrength: 70 + Math.random() * 30
+            };
+            
+            client.publish('supplychain/iot/sensors/' + deviceId, JSON.stringify(data));
+            console.log('Published:', deviceId, sensorType, value);
+          }, 2000); // Publish every 2 seconds
+        });
+        EOF &&
+        node simulator.js
+      "
+    depends_on:
+      - mosquitto
+    networks:
+      - supplychain-network
+
+networks:
+  supplychain-network:
+    driver: bridge
+
+volumes:
+  redis-data:

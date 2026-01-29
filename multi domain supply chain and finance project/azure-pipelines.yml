@@ -1,0 +1,353 @@
+# Azure DevOps Pipeline for Supply Chain Finance Platform
+# Multi-stage pipeline for Azure Kubernetes deployment
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    exclude:
+    - docs/
+    - README.md
+    - '*.md'
+
+pr:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    exclude:
+    - docs/
+    - README.md
+    - '*.md'
+
+variables:
+  azureSubscription: 'Azure for Students'
+  resourceGroup: 'supplychain-student-rg'
+  location: 'East US'
+  acrName: 'supplychainstudent'
+  aksCluster: 'supplychain-aks'
+  imageTag: '$(Build.BuildId)'
+  dockerRegistryServiceConnection: 'supplychain-acr-connection'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: BuildTest
+    displayName: 'Build and Test Services'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: Maven@3
+      displayName: 'Build Auth Service'
+      inputs:
+        mavenPomFile: 'backend/auth-service/pom.xml'
+        publishJUnitResults: true
+        testResultsFiles: '**/TEST-*.xml'
+        goals: 'clean package'
+
+    - task: Maven@3
+      displayName: 'Build Finance Service'
+      inputs:
+        mavenPomFile: 'backend/finance-service/pom.xml'
+        publishJUnitResults: true
+        testResultsFiles: '**/TEST-*.xml'
+        goals: 'clean package'
+
+    - task: NodeTool@0
+      displayName: 'Install Node.js'
+      inputs:
+        versionSpec: '18.x'
+
+    - task: Npm@1
+      displayName: 'Build Frontend'
+      inputs:
+        command: 'install'
+        workingDir: 'frontend/react-app'
+
+    - task: Npm@1
+      displayName: 'Test Frontend'
+      inputs:
+        command: 'test'
+        workingDir: 'frontend/react-app'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Build Artifacts'
+      inputs:
+        pathToPublish: '$(System.DefaultWorkingDirectory)'
+        artifactName: 'drop'
+
+- stage: Containerize
+  displayName: 'Build and Push Containers'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: BuildPush
+    displayName: 'Build and Push Docker Images'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)'
+
+    - task: Docker@2
+      displayName: 'Login to ACR'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        command: 'login'
+
+    - task: Docker@2
+      displayName: 'Build Auth Service'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: 'auth-service'
+        command: 'buildAndPush'
+        Dockerfile: 'backend/auth-service/Dockerfile.azure'
+        tags: |
+          latest
+          $(imageTag)
+
+    - task: Docker@2
+      displayName: 'Build Finance Service'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: 'finance-service'
+        command: 'buildAndPush'
+        Dockerfile: 'backend/finance-service/Dockerfile.azure'
+        tags: |
+          latest
+          $(imageTag)
+
+    - task: Docker@2
+      displayName: 'Build Blockchain Service'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: 'blockchain-service'
+        command: 'buildAndPush'
+        Dockerfile: 'backend/blockchain-service/Dockerfile.azure'
+        tags: |
+          latest
+          $(imageTag)
+
+    - task: Docker@2
+      displayName: 'Build AI Service'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: 'ai-service'
+        command: 'buildAndPush'
+        Dockerfile: 'backend/ai-service/Dockerfile.azure'
+        tags: |
+          latest
+          $(imageTag)
+
+    - task: Docker@2
+      displayName: 'Build Frontend'
+      inputs:
+        containerRegistry: '$(dockerRegistryServiceConnection)'
+        repository: 'frontend'
+        command: 'buildAndPush'
+        Dockerfile: 'frontend/react-app/Dockerfile.azure'
+        tags: |
+          latest
+          $(imageTag)
+
+- stage: DeployDev
+  displayName: 'Deploy to Development'
+  dependsOn: Containerize
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+  jobs:
+  - deployment: DeployDev
+    displayName: 'Deploy to Dev Environment'
+    environment: 'development'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            displayName: 'Deploy to AKS Development'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Set AKS context
+                az aks get-credentials \
+                  --resource-group $(resourceGroup) \
+                  --name $(aksCluster) \
+                  --overwrite-existing
+
+                # Update image tags for development
+                sed -i 's|latest|$(imageTag)|g' k8s/*.yaml
+
+                # Deploy to development namespace
+                kubectl create namespace supplychain-dev --dry-run=client -o yaml | kubectl apply -f -
+                kubectl apply -f k8s/ -n supplychain-dev
+
+                # Wait for deployment
+                kubectl wait --for=condition=ready pod --all -n supplychain-dev --timeout=600s
+
+          - task: AzureCLI@2
+            displayName: 'Run Integration Tests'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Run integration tests against dev environment
+                kubectl run test-runner --rm -i --restart=Never --image=supplychainstudent.azurecr.io/auth-service:$(imageTag) -- ./mvnw test -Dspring.profiles.active=test
+
+- stage: DeployStaging
+  displayName: 'Deploy to Staging'
+  dependsOn: DeployDev
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployStaging
+    displayName: 'Deploy to Staging Environment'
+    environment: 'staging'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            displayName: 'Deploy to AKS Staging'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Deploy to staging namespace
+                kubectl create namespace supplychain-staging --dry-run=client -o yaml | kubectl apply -f -
+                kubectl apply -f k8s/ -n supplychain-staging
+
+                # Wait for deployment
+                kubectl wait --for=condition=ready pod --all -n supplychain-staging --timeout=600s
+
+          - task: AzureCLI@2
+            displayName: 'Run E2E Tests'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Run end-to-end tests
+                kubectl run e2e-runner --rm -i --restart=Never --image=supplychainstudent.azurecr.io/frontend:$(imageTag) -- npm run test:e2e
+
+- stage: DeployProduction
+  displayName: 'Deploy to Production'
+  dependsOn: DeployStaging
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployProduction
+    displayName: 'Deploy to Production Environment'
+    environment: 'production'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            displayName: 'Deploy to AKS Production'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Backup current production
+                kubectl get all -n supplychain-production -o yaml > production-backup-$(date +%Y%m%d-%H%M%S).yaml
+
+                # Deploy with zero-downtime strategy
+                kubectl apply -f k8s/ -n supplychain-production
+
+                # Wait for deployment
+                kubectl wait --for=condition=ready pod --all -n supplychain-production --timeout=600s
+
+                # Verify deployment
+                kubectl get pods -n supplychain-production
+
+          - task: AzureCLI@2
+            displayName: 'Run Production Validation'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Health checks
+                curl -f https://supplychain-platform.com/health || exit 1
+                curl -f https://supplychain-platform.com/api/auth/health || exit 1
+                curl -f https://supplychain-platform.com/api/finance/health || exit 1
+
+          - task: AzureCLI@2
+            displayName: 'Update Azure Front Door'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Update Front Door routing
+                az afd origin update \
+                  --resource-group $(resourceGroup) \
+                  --profile-name supplychain-cdn \
+                  --endpoint-name supplychain-frontend \
+                  --origin-group-name supplychain-origins \
+                  --origin-name supplychain-api \
+                  --origin-host-header $(kubectl get service api-gateway -n supplychain-production -o jsonpath='{.status.loadBalancer.ingress[0].ip}').eastus.cloudapp.azure.com
+
+- stage: PostDeploy
+  displayName: 'Post-Deployment Tasks'
+  dependsOn: DeployProduction
+  condition: succeeded()
+  jobs:
+  - job: PostDeploy
+    displayName: 'Post-Deployment Validation'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Run Performance Tests'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Run performance tests
+          kubectl run perf-test --rm -i --restart=Never --image=supplychainstudent.azurecr.io/ai-service:$(imageTag) -- python tests/performance/load-test.py
+
+    - task: AzureCLI@2
+      displayName: 'Update Documentation'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Update deployment status in documentation
+          echo "Deployment completed on $(date)" >> DEPLOYMENT_LOG.md
+          echo "Image tag: $(imageTag)" >> DEPLOYMENT_LOG.md
+          echo "Commit: $(Build.SourceVersion)" >> DEPLOYMENT_LOG.md
+
+    - task: AzureCLI@2
+      displayName: 'Send Notifications'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Send notification to team
+          az monitor action-group create \
+            --name deployment-notifications \
+            --resource-group $(resourceGroup) \
+            --short-name "DeployAlert" \
+            --email-receiver name="Team" email-address="team@domain.com" \
+            --webhook-receiver name="Teams" uri="https://outlook.office.com/webhook/your-webhook-url"

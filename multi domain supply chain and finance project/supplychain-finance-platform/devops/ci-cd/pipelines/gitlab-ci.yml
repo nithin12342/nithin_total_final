@@ -1,0 +1,190 @@
+# GitLab CI/CD Pipeline for Supply Chain Finance Platform
+
+stages:
+  - build
+  - test
+  - security
+  - deploy
+  - monitor
+
+variables:
+  NODE_VERSION: "18"
+  PYTHON_VERSION: "3.9"
+  JAVA_VERSION: "17"
+  DOCKER_REGISTRY: $CI_REGISTRY
+  IMAGE_NAME: $CI_PROJECT_NAME
+
+# Cache configuration
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .npm/
+    - .m2/
+    - .pytest_cache/
+    - node_modules/
+    - venv/
+
+# Build stage
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - |
+      for service in auth-service supplychain-service finance-service defi-service ai-service blockchain-service iot-service; do
+        echo "Building $service"
+        docker build -t $CI_REGISTRY_IMAGE/$service:$CI_COMMIT_SHA ./backend/$service
+        docker push $CI_REGISTRY_IMAGE/$service:$CI_COMMIT_SHA
+      done
+  only:
+    - main
+    - develop
+    - merge_requests
+
+# Code Quality stage
+code-quality:
+  stage: test
+  image: node:$NODE_VERSION
+  before_script:
+    - npm ci
+  script:
+    - npm run lint
+    - npm run format:check
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+  allow_failure: true
+
+# Unit Tests stage
+unit-tests:
+  stage: test
+  image: node:$NODE_VERSION
+  services:
+    - postgres:15
+    - redis:7-alpine
+  variables:
+    POSTGRES_DB: test_db
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+  before_script:
+    - npm ci
+  script:
+    - npm run test:unit
+  coverage: '/Lines\s*:\s*(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      junit: test-results/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+
+# Integration Tests stage
+integration-tests:
+  stage: test
+  image: python:$PYTHON_VERSION
+  services:
+    - postgres:15
+    - redis:7-alpine
+  variables:
+    POSTGRES_DB: test_db
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+  before_script:
+    - pip install -r requirements.txt
+  script:
+    - python -m pytest tests/integration
+  artifacts:
+    reports:
+      junit: test-results/integration-junit.xml
+
+# Security Scanning stage
+security-scan:
+  stage: security
+  image: python:$PYTHON_VERSION
+  before_script:
+    - pip install bandit safety
+  script:
+    - bandit -r . -f json -o bandit-report.json
+    - safety check --full-report
+  artifacts:
+    reports:
+      security: bandit-report.json
+  allow_failure: true
+
+# Container Security stage
+container-security:
+  stage: security
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker pull $CI_REGISTRY_IMAGE/supplychain-service:$CI_COMMIT_SHA
+    - docker scan $CI_REGISTRY_IMAGE/supplychain-service:$CI_COMMIT_SHA || true
+  allow_failure: true
+
+# Deploy to Staging stage
+deploy-staging:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  environment:
+    name: staging
+    url: https://staging.supplychain.example.com
+  before_script:
+    - echo $KUBE_CONFIG_STAGING | base64 -d > kubeconfig
+    - export KUBECONFIG=kubeconfig
+  script:
+    - |
+      for service in auth-service supplychain-service finance-service defi-service ai-service blockchain-service iot-service; do
+        kubectl set image deployment/$service $service=$CI_REGISTRY_IMAGE/$service:$CI_COMMIT_SHA -n staging
+      done
+  only:
+    - develop
+
+# Deploy to Production stage
+deploy-production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  environment:
+    name: production
+    url: https://supplychain.example.com
+  before_script:
+    - echo $KUBE_CONFIG_PRODUCTION | base64 -d > kubeconfig
+    - export KUBECONFIG=kubeconfig
+  script:
+    - |
+      for service in auth-service supplychain-service finance-service defi-service ai-service blockchain-service iot-service; do
+        kubectl set image deployment/$service $service=$CI_REGISTRY_IMAGE/$service:$CI_COMMIT_SHA -n production
+      done
+  when: manual
+  only:
+    - main
+
+# Performance Testing stage
+performance-test:
+  stage: test
+  image: node:$NODE_VERSION
+  before_script:
+    - npm ci
+  script:
+    - npm run test:performance
+  artifacts:
+    reports:
+      load_performance: performance-results.json
+  allow_failure: true
+  only:
+    - main
+    - develop
+
+# End-to-End Tests stage
+e2e-tests:
+  stage: test
+  image: node:$NODE_VERSION
+  services:
+    - selenium/standalone-chrome:latest
+  before_script:
+    - npm ci

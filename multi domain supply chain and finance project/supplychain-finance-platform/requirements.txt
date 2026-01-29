@@ -1,0 +1,12 @@
+# DEPRECATED FILE - USE ROOT REQUIREMENTS.TXT
+#
+# This requirements.txt file has been consolidated into the main project requirements.txt
+# Please refer to: /requirements.txt for all Python dependencies
+#
+# File deprecated as of: October 23, 2025
+# Reason: Requirements consolidation for better organization
+#
+# All dependencies are now organized by category in the root requirements.txt file
+# with no duplicates and complete coverage of all components.
+
+DEPRECATED - USE ROOT REQUIREMENTS.TXT INSTEAD

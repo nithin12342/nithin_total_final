@@ -1,0 +1,344 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Supply Chain Finance Platform - Overview",
+    "tags": ["supplychain", "finance", "blockchain", "ai-ml"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "type": "graph",
+        "title": "HTTP Request Rate",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{job}} - {{method}} {{status}}",
+            "interval": "",
+            "refId": "A"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec",
+            "logBase": 1
+          },
+          {
+            "format": "short",
+            "logBase": 1
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "type": "graph",
+        "title": "HTTP Request Duration",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{job}} - 95th percentile",
+            "interval": "",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{job}} - 50th percentile",
+            "interval": "",
+            "refId": "B"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Seconds",
+            "logBase": 1
+          },
+          {
+            "format": "short",
+            "logBase": 1
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "type": "stat",
+        "title": "System Uptime",
+        "gridPos": {"x": 0, "y": 6, "w": 6, "h": 3},
+        "targets": [
+          {
+            "expr": "time() - process_start_time_seconds",
+            "legendFormat": "{{job}}",
+            "interval": "",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "fieldOptions": {
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        }
+      },
+      {
+        "id": 4,
+        "type": "stat",
+        "title": "Error Rate",
+        "gridPos": {"x": 6, "y": 6, "w": 6, "h": 3},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m])",
+            "legendFormat": "{{job}}",
+            "interval": "",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "fieldOptions": {
+            "calcs": ["lastNotNull"]
+          },
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        }
+      },
+      {
+        "id": 5,
+        "type": "graph",
+        "title": "Memory Usage",
+        "gridPos": {"x": 12, "y": 6, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "container_memory_usage_bytes{container!=\"POD\", container!=\"\"}",
+            "legendFormat": "{{container}}",
+            "interval": "",
+            "refId": "A"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxes": [
+          {
+            "format": "bytes",
+            "label": "Memory",
+            "logBase": 1
+          },
+          {
+            "format": "short",
+            "logBase": 1
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "type": "graph",
+        "title": "CPU Usage",
+        "gridPos": {"x": 0, "y": 9, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{container!=\"POD\", container!=\"\"}[5m])",
+            "legendFormat": "{{container}}",
+            "interval": "",
+            "refId": "A"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxes": [
+          {
+            "format": "percentunit",
+            "label": "CPU",
+            "logBase": 1
+          },
+          {
+            "format": "short",
+            "logBase": 1
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "type": "graph",
+        "title": "Blockchain Metrics",
+        "gridPos": {"x": 0, "y": 15, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "blockchain_block_height",
+            "legendFormat": "Block Height",
+            "interval": "",
+            "refId": "A"
+          },
+          {
+            "expr": "blockchain_pending_transactions",
+            "legendFormat": "Pending Transactions",
+            "interval": "",
+            "refId": "B"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Count",
+            "logBase": 1
+          },
+          {
+            "format": "short",
+            "logBase": 1
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "type": "graph",
+        "title": "AI/ML Model Performance",
+        "gridPos": {"x": 12, "y": 15, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "ml_model_accuracy",
+            "legendFormat": "Accuracy",
+            "interval": "",
+            "refId": "A"
+          },
+          {
+            "expr": "ml_model_latency_seconds",
+            "legendFormat": "Latency",
+            "interval": "",
+            "refId": "B"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxes": [
+          {
+            "format": "percentunit",
+            "label": "Accuracy",
+            "logBase": 1
+          },
+          {
+            "format": "s",
+            "label": "Latency",
+            "logBase": 1
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "type": "graph",
+        "title": "Supply Chain Metrics",
+        "gridPos": {"x": 0, "y": 21, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "supply_chain_orders_processed",
+            "legendFormat": "Orders Processed",
+            "interval": "",
+            "refId": "A"
+          },
+          {
+            "expr": "supply_chain_inventory_turnover",
+            "legendFormat": "Inventory Turnover",
+            "interval": "",
+            "refId": "B"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Count",
+            "logBase": 1
+          },
+          {
+            "format": "short",
+            "logBase": 1
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "type": "graph",
+        "title": "Financial Metrics",
+        "gridPos": {"x": 12, "y": 21, "w": 12, "h": 6},
+        "targets": [
+          {
+            "expr": "financial_transactions_processed",
+            "legendFormat": "Transactions Processed",
+            "interval": "",
+            "refId": "A"
+          },
+          {
+            "expr": "financial_transaction_value",
+            "legendFormat": "Transaction Value",
+            "interval": "",
+            "refId": "B"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        },
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Count",
+            "logBase": 1
+          },
+          {
+            "format": "currencyUSD",
+            "label": "Value",
+            "logBase": 1
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "time_options": [
+        "5m",
+        "15m",
+        "1h",
+        "6h",
+        "12h",
+        "24h",
+        "2d",
+        "7d",
+        "30d"
+      ]
+    }
+  }
+}

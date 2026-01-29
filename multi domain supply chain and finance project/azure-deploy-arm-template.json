@@ -1,0 +1,330 @@
+# Azure Resource Manager (ARM) Template for Supply Chain Finance Platform
+# Infrastructure as Code for Azure Student Deployment
+
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "defaultValue": "student",
+      "allowedValues": ["student", "dev", "staging", "prod"],
+      "metadata": {
+        "description": "Deployment environment"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "East US",
+      "allowedValues": ["East US", "West US", "Central US", "North Europe", "West Europe"],
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "postgresPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password for PostgreSQL admin user"
+      }
+    },
+    "studentEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Student email for notifications and access"
+      }
+    }
+  },
+  "variables": {
+    "resourceGroupName": "[resourceGroup().name]",
+    "acrName": "[concat('supplychain', parameters('environment'))]",
+    "aksName": "[concat('supplychain-aks-', parameters('environment'))]",
+    "postgresName": "[concat('supplychain-postgres-', parameters('environment'))]",
+    "redisName": "[concat('supplychain-redis-', parameters('environment'))]",
+    "storageName": "[concat('supplychainstorage', parameters('environment'))]",
+    "keyvaultName": "[concat('supplychain-kv-', parameters('environment'))]",
+    "appInsightsName": "[concat('supplychain-insights-', parameters('environment'))]",
+    "logAnalyticsName": "[concat('supplychain-logs-', parameters('environment'))]",
+    "vnetName": "[concat('supplychain-vnet-', parameters('environment'))]",
+    "subnetName": "[concat('supplychain-subnet-', parameters('environment'))]",
+    "nsgName": "[concat('supplychain-nsg-', parameters('environment'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2021-08-01",
+      "name": "[variables('vnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": ["10.0.0.0/16"]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnetName')]",
+            "properties": {
+              "addressPrefix": "10.0.0.0/24"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2021-08-01",
+      "name": "[variables('nsgName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowHTTP",
+            "properties": {
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "AllowHTTPS",
+            "properties": {
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2021-09-01",
+      "name": "[variables('acrName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Basic"
+      },
+      "properties": {
+        "adminUserEnabled": true
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/servers",
+      "apiVersion": "2017-12-01",
+      "name": "[variables('postgresName')]",
+      "location": "[parameters('location')]",
+      "kind": "",
+      "sku": {
+        "name": "B_Gen5_1",
+        "tier": "Basic",
+        "capacity": 1,
+        "size": "5120",
+        "family": "Gen5"
+      },
+      "properties": {
+        "administratorLogin": "adminuser",
+        "administratorLoginPassword": "[parameters('postgresPassword')]",
+        "version": "11",
+        "storageProfile": {
+          "storageMB": 5120,
+          "backupRetentionDays": 7,
+          "geoRedundantBackup": "Disabled"
+        },
+        "sslEnforcement": "Enabled"
+      },
+      "resources": [
+        {
+          "type": "firewallRules",
+          "apiVersion": "2017-12-01",
+          "name": "AllowAllAzureServices",
+          "dependsOn": ["[variables('postgresName')]"],
+          "properties": {
+            "startIpAddress": "0.0.0.0",
+            "endIpAddress": "0.0.0.0"
+          }
+        },
+        {
+          "type": "databases",
+          "apiVersion": "2017-12-01",
+          "name": "supplychaindb",
+          "dependsOn": ["[variables('postgresName')]"],
+          "properties": {
+            "charset": "UTF8",
+            "collation": "English_United States.1252"
+          }
+        }
+      ]
+    },
+    {
+      "type": "Microsoft.Cache/redis",
+      "apiVersion": "2021-09-01",
+      "name": "[variables('redisName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "Basic",
+          "family": "C",
+          "capacity": 0
+        },
+        "enableNonSslPort": false,
+        "minimumTlsVersion": "1.2"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-09-01",
+      "name": "[variables('storageName')]",
+      "location": "[parameters('location')]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "properties": {
+        "allowBlobPublicAccess": true,
+        "minimumTlsVersion": "TLS1_2",
+        "supportsHttpsTrafficOnly": true
+      },
+      "resources": [
+        {
+          "type": "blobServices/containers",
+          "apiVersion": "2021-09-01",
+          "name": "static-assets",
+          "dependsOn": ["[variables('storageName')]"],
+          "properties": {
+            "publicAccess": "Blob"
+          }
+        }
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2021-11-01-preview",
+      "name": "[variables('keyvaultName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "enabledForDeployment": true,
+        "enabledForDiskEncryption": true,
+        "enabledForTemplateDeployment": true,
+        "tenantId": "[subscription().tenantId]",
+        "sku": {
+          "name": "standard",
+          "family": "A"
+        },
+        "accessPolicies": [
+          {
+            "tenantId": "[subscription().tenantId]",
+            "objectId": "[reference(resourceId('Microsoft.Web/sites', 'supplychain-auth-service'), '2021-03-01').identity.principalId]",
+            "permissions": {
+              "keys": ["get", "list"],
+              "secrets": ["get", "list"],
+              "certificates": ["get", "list"]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.ContainerService/managedClusters",
+      "apiVersion": "2021-11-01",
+      "name": "[variables('aksName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "kubernetesVersion": "1.24.3",
+        "dnsPrefix": "[variables('aksName')]",
+        "agentPoolProfiles": [
+          {
+            "name": "default",
+            "count": 1,
+            "vmSize": "Standard_B2s",
+            "osType": "Linux",
+            "mode": "System"
+          }
+        ],
+        "servicePrincipalProfile": {
+          "clientId": "msi"
+        },
+        "addonProfiles": {
+          "azurepolicy": {
+            "enabled": false
+          },
+          "httpApplicationRouting": {
+            "enabled": true
+          },
+          "monitoring": {
+            "enabled": true,
+            "config": {
+              "logAnalyticsWorkspaceResourceID": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2021-06-01",
+      "name": "[variables('logAnalyticsName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "PerGB2018"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+      }
+    }
+  ],
+  "outputs": {
+    "acrLoginServer": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), '2021-09-01').loginServer]"
+    },
+    "acrUsername": {
+      "type": "string",
+      "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', variables('acrName')), '2021-09-01').username]"
+    },
+    "aksClusterName": {
+      "type": "string",
+      "value": "[variables('aksName')]"
+    },
+    "postgresServerName": {
+      "type": "string",
+      "value": "[variables('postgresName')]"
+    },
+    "redisName": {
+      "type": "string",
+      "value": "[variables('redisName')]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[variables('storageName')]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults', variables('keyvaultName')), '2021-11-01-preview').vaultUri]"
+    },
+    "appInsightsInstrumentationKey": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').InstrumentationKey]"
+    }
+  }
+}

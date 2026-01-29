@@ -1,0 +1,206 @@
+# Advanced Auto-Scaling Configuration for Supply Chain Finance Platform
+
+---
+# Vertical Pod Autoscaler (VPA) Configuration
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: supplychain-service-vpa
+  namespace: supply-chain
+spec:
+  targetRef:
+    apiVersion: "apps/v1"
+    kind: Deployment
+    name: supplychain-service
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: supplychain-service
+        maxAllowed:
+          cpu: 2
+          memory: 4Gi
+        minAllowed:
+          cpu: 100m
+          memory: 128Mi
+
+---
+# Custom Metrics Adapter for Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: supplychain-service-custom-hpa
+  namespace: supply-chain
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: supplychain-service
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "100"
+    - type: External
+      external:
+        metric:
+          name: queue_length
+        target:
+          type: Value
+          value: "30"
+
+---
+# Cluster Autoscaler Configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-autoscaler
+  namespace: kube-system
+  labels:
+    app: cluster-autoscaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cluster-autoscaler
+  template:
+    metadata:
+      labels:
+        app: cluster-autoscaler
+    spec:
+      serviceAccountName: cluster-autoscaler
+      containers:
+        - image: k8s.gcr.io/autoscaling/cluster-autoscaler:v1.24.0
+          name: cluster-autoscaler
+          resources:
+            limits:
+              cpu: 100m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 300Mi
+          command:
+            - ./cluster-autoscaler
+            - --v=4
+            - --stderrthreshold=info
+            - --cloud-provider=aws
+            - --skip-nodes-with-local-storage=false
+            - --expander=least-waste
+            - --node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/supplychain-platform
+            - --balance-similar-node-groups
+            - --skip-nodes-with-system-pods=false
+          volumeMounts:
+            - name: ssl-certs
+              mountPath: /etc/ssl/certs/ca-certificates.crt
+              readOnly: true
+          imagePullPolicy: "Always"
+      volumes:
+        - name: ssl-certs
+          hostPath:
+            path: "/etc/ssl/certs/ca-bundle.crt"
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+
+---
+# KEDA (Kubernetes Event-Driven Autoscaling) Configuration
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: supplychain-service-keda
+  namespace: supply-chain
+spec:
+  scaleTargetRef:
+    name: supplychain-service
+  pollingInterval: 30
+  cooldownPeriod: 300
+  minReplicaCount: 3
+  maxReplicaCount: 30
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local:9090
+        metricName: http_requests_total
+        threshold: '100'
+        query: sum(rate(http_requests_total{job="supplychain-service"}[2m]))
+    - type: aws-sqs-queue
+      metadata:
+        queueURL: https://sqs.us-west-2.amazonaws.com/123456789/supplychain-queue
+        queueLength: "5"
+        awsRegion: "us-west-2"
+      authenticationRef:
+        name: keda-trigger-auth-aws-credentials
+    - type: redis
+      metadata:
+        address: redis-master.redis.svc.cluster.local:6379
+        listName: supplychain_orders
+        listLength: "10"
+      authenticationRef:
+        name: keda-trigger-auth-redis
+
+---
+# Custom Metrics Adapter for Advanced Scaling
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: custom-metrics-adapter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: custom-metrics-adapter
+  template:
+    metadata:
+      labels:
+        app: custom-metrics-adapter
+    spec:
+      serviceAccountName: custom-metrics-adapter
+      containers:
+        - name: custom-metrics-adapter
+          image: directxman12/k8s-prometheus-adapter-amd64:v0.9.0
+          args:
+            - --secure-port=6443
+            - --cert-dir=/tmp/cert
+            - --logtostderr=true
+            - --prometheus-url=http://prometheus-server.monitoring.svc.cluster.local:9090
+            - --metrics-relist-interval=1m
+            - --v=4
+            - --config=/etc/adapter/config.yaml
+          ports:
+            - containerPort: 6443
+          volumeMounts:
+            - name: config
+              mountPath: /etc/adapter/
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: config
+          configMap:
+            name: adapter-config
+        - name: tmp
+          emptyDir: {}
