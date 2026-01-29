@@ -1,0 +1,11 @@
+﻿**/node_modules/
+node_modules/
+.env
+.DS_Store
+*.log
+dist/
+build/
+.next/
+.vscode/
+bin/
+obj/
